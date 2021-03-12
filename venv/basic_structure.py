@@ -1,4 +1,4 @@
-from collections import defaultdict
+import numpy as np
 
 
 class Node:
@@ -25,7 +25,7 @@ class Node:
 
 class Placeholder(Node):
     def __init__(self, name=None, istrainable=True):
-        None.__init__(self, name=name, istrainable=istrainable)
+        Node.__init__(self, name=name, istrainable=istrainable)
 
     def forward(self, x):
         self.value = x
@@ -35,11 +35,12 @@ class Placeholder(Node):
 
 
 class Linear(Node):
-    def __init__(self, input_=[], name=None, istrainable=True):
-        None.__init__(self, input_=input_, name=name, istrainable=istrainable)
+    def __init__(self, x, w, b, name=None, istrainable=True):
+        Node.__init__(self, input_=[x, w, b], name=name, istrainable=istrainable)
+        self.x, self.w, self.b = self.input
 
     def forward(self):
-        pass
+        self.value = self.x.value * self.w.value + self.b.value
 
     def backward(self):
         pass
@@ -47,21 +48,23 @@ class Linear(Node):
 
 class Sigmoid(Node):
     def __init__(self, input_=[], name=None, istrainable=True):
-        None.__init__(self, input_=input_, name=name, istrainable=istrainable)
+        Node.__init__(self, input_=input_, name=name, istrainable=istrainable)
 
     def forward(self):
-        pass
+        self.value = 1/(1 + np.exp(-self.input[0].value))
 
     def backward(self):
         pass
 
 
 class MSELoss(Node):
-    def __init__(self, input_=[], name=None, istrainable=True):
-        None.__init__(self, input_=input_, name=name, istrainable=istrainable)
+    def __init__(self, y_, y, name=None, istrainable=True):
+        Node.__init__(self, input_=[y_, y], name=name, istrainable=istrainable)
+        self.y_ = self.input[0]  # prediction
+        self.y = self.input[1]
 
     def forward(self):
-        pass
+        self.value = ((self.y_.value-self.y)**2)/2
 
     def backward(self):
         pass

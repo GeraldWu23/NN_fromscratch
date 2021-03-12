@@ -1,7 +1,50 @@
-from basic_structure import Placeholder
+from basic_structure import Placeholder, Linear, Sigmoid, MSELoss
 import numpy as np
+from collections import defaultdict
 
 
+def feed_dict_2_graph(feed_dict):
+    nodes = [node for node in feed_dict]  # Placeholder nodes
+    graph = defaultdict(list)
+
+    while nodes:
+        node = nodes.pop(0)
+        if node in graph:
+            continue  # avoid dead loop
+
+        if isinstance(node, Placeholder):
+            node.value = feed_dict[node]
+
+        for next_node in node.output:
+            graph[node].append(next_node)
+            if next_node not in nodes:
+                nodes.append(next_node)
+
+    return graph
+
+
+def topo_sorting(graph):
+    order = []
+    outfrom = set([node for node in graph])
+    into = set()
+    for node in outfrom:
+        # print(graph[node])
+        into = into.union(set(graph[node]))
+
+    outfrom = outfrom.union(into - outfrom)  # nodes with no output
+
+    while outfrom:
+        no_in_node = outfrom - into
+        order += no_in_node
+        outfrom -= no_in_node  # generate next gen outfrom
+
+        # generate next gen into
+        into = set()
+        for node in outfrom:
+            left_out = set([node for node in graph[node] if node not in order])
+            into = into.union(left_out)
+
+    return order
 
 
 if __name__ == "__main__":
@@ -11,12 +54,20 @@ if __name__ == "__main__":
     w0 = Placeholder(name='w0')
     b0 = Placeholder(name='b0')
 
-    linear = Linear()
-
-    feed_input = {'x': x,
-                  'y': y,
-                  'w0': w0,
-                  'b0': b0,
-                  'w1': w1,
-                  'b1': b1,
+    feed_input = {x: x_,
+                  y: y_,
+                  w0: w0_,
+                  b0: b0_,
                   }
+
+    linear_out = Linear(x, w0, b0, name='linear')
+    sigmoid_out = Sigmoid([linear_out], name='sigmoid')
+    # fake_relu_out = Sigmoid([linear_out], name='fakerelu')
+    # relu_loss = MSELoss(sigmoid_out, y, name='relu_loss')
+    # second_loss = MSELoss(sigmoid_out, y, name='second_loss')
+    loss = MSELoss(sigmoid_out, y, name='loss')
+
+    graph_ = feed_dict_2_graph(feed_input)
+    order_ = topo_sorting(graph_)
+    print(order_)
+
