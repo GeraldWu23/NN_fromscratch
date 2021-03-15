@@ -26,14 +26,13 @@ class Node:
 
 
 class Placeholder(Node):
-    def __init__(self, x=None, name=None, istrainable=True):
-        Node.__init__(self, [x], name=name, istrainable=istrainable)
-        self.x = None
+    def __init__(self, name=None, istrainable=True):
+        Node.__init__(self, name=name, istrainable=istrainable)
 
-    def forward(self):
+    def forward(self, value=None):
         # value will be assigned here again after init
-        self.x = self.input[0]
-        self.value = self.input[0]
+        if value:
+            self.value = value
 
     def backward(self):
         for node in self.output:
@@ -105,7 +104,7 @@ def feed_dict_2_graph(feed_dict):
             continue  # avoid dead loop
 
         if isinstance(node, Placeholder):
-            node.input = [feed_dict[node]]
+            node.value = feed_dict[node]
 
         for next_node in node.output:
             graph[node].append(next_node)
@@ -137,6 +136,16 @@ def topo_sorting(graph):
             into = into.union(left_out)
 
     return order
+
+
+def optimize(graph, lr=1e-2):
+    for node in filter(lambda n: n.istrainable, graph):
+        node.value += (-1) * node.gradient[node] * lr
+
+
+def no_grad(graph):
+    for node in graph:
+        node.gradient = defaultdict(np.float64)
 
 
 class NN:
@@ -171,7 +180,7 @@ class NN:
         self.backward()
 
     def optimize(self, lr=1e-2):
-        for node in filter(lambda n:n.istrainable, self.graph):
+        for node in filter(lambda n: n.istrainable, self.graph):
             node.value += (-1) * node.gradient[node] * lr
 
 
