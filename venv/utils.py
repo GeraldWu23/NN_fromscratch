@@ -47,6 +47,12 @@ def topo_sorting(graph):
     return order
 
 
+def optimize(graph, learning_rate):
+    for node in graph:
+        if node.istrainable:
+            node.value += (-1) * learning_rate * node.gradient[node]
+
+
 if __name__ == "__main__":
     x_, y_, w0_, b0_, w1_, b1_ = np.random.normal(size=(1, 6)).squeeze()
     x = Placeholder(name='x', istrainable=False)
@@ -62,17 +68,27 @@ if __name__ == "__main__":
 
     linear_out = Linear(x, w0, b0, name='linear')
     sigmoid_out = Sigmoid([linear_out], name='sigmoid')
-    # fake_relu_out = Sigmoid([linear_out], name='fakerelu')
-    # relu_loss = MSELoss(sigmoid_out, y, name='relu_loss')
-    # second_loss = MSELoss(sigmoid_out, y, name='second_loss')
     loss = MSELoss(sigmoid_out, y, name='loss')
 
     graph_ = feed_dict_2_graph(feed_input)
     order_ = topo_sorting(graph_)
     print(order_)
 
+    print("forward:")
     for node in order_:
-        node.forawrd()
+        node.forward()
+        print(f"{node.name}: {node.value}")
+
+    print("\nbackward:")
+    for node in order_[::-1]:
+        node.backward()
+        print(f"{node.name}: {node.gradient}")
+
+    optimize(graph_, learning_rate=1e-2)
+
+    print("\noptimize:")
+    for node in graph_:
+        print(f"{node.name}: {node.value}")
 
 
 
