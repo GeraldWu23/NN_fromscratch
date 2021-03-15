@@ -95,5 +95,101 @@ class MSELoss(Node):
         self.gradient[self.y] = 2 * (self.yval - self.y_val)
 
 
+def feed_dict_2_graph(feed_dict):
+    nodes = [node for node in feed_dict]  # Placeholder nodes
+    graph = defaultdict(list)
+
+    while nodes:
+        node = nodes.pop(0)
+        if node in graph:
+            continue  # avoid dead loop
+
+        if isinstance(node, Placeholder):
+            node.input = [feed_dict[node]]
+
+        for next_node in node.output:
+            graph[node].append(next_node)
+            if next_node not in nodes:
+                nodes.append(next_node)
+
+    return graph
+
+
+def topo_sorting(graph):
+    order = []
+    outfrom = set([node for node in graph])
+    into = set()
+    for node in outfrom:
+        # print(graph[node])
+        into = into.union(set(graph[node]))
+
+    outfrom = outfrom.union(into - outfrom)  # nodes with no output
+
+    while outfrom:
+        no_in_node = outfrom - into
+        order += no_in_node
+        outfrom -= no_in_node  # generate next gen outfrom
+
+        # generate next gen into
+        into = set()
+        for node in outfrom:
+            left_out = set([node for node in graph[node] if node not in order])
+            into = into.union(left_out)
+
+    return order
+
+
+class NN:
+    def __init__(self, input_):
+        self.input = input_
+        self.x = Placeholder(name='x', istrainable=False)
+        self.y = Placeholder(name='y', istrainable=False)
+        self.w = Placeholder(name='w')
+        self.b = Placeholder(name='b')
+        self.linear = Linear(self.x, self.w, self.b, name='linear')
+        self.sigmoid = Sigmoid([self.linear], name='sigmoid')
+        self.loss = MSELoss(self.sigmoid, self.y, name='MSE loss')
+
+        feed_input = {self.x: self.input['x'],
+                      self.y: self.input['y'],
+                      self.w: self.input['w'],
+                      self.b: self.input['b']}
+
+        self.graph = feed_dict_2_graph(feed_input)
+        self.order = topo_sorting(self.graph)
+
+    def forward(self):
+        for node in self.order:
+            node.forward()
+
+    def backward(self):
+        for node in self.order[::-1]:
+            node.backward()
+
+    def run_one_epoch(self):
+        self.forward()
+        self.backward()
+
+    def optimize(self, lr=1e-2):
+        for node in filter(lambda n:n.istrainable, self.graph):
+            node.value += (-1) * node.gradient[node] * lr
+
+
 if __name__ == "__main__":
-    pass
+    x_, y_, w0_, b0_ = np.random.normal(size=(1, 4)).squeeze()
+    input_ = {
+        'x': x_,
+        'y': y_,
+        'w': w0_,
+        'b': b0_
+    }
+
+    model = NN(input_)
+
+    print(input_)
+    model.forward()
+    print([f'{node.name}: {node.value}' for node in model.graph])
+    model.backward()
+    model.optimize(lr=1e-1)
+    print()
+    print([f'{node.name}: {node.value}' for node in model.graph])
