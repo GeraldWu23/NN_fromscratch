@@ -13,7 +13,7 @@ def feed_dict_2_graph(feed_dict):
             continue  # avoid dead loop
 
         if isinstance(node, Placeholder):
-            node.value = feed_dict[node]
+            node.input = [feed_dict[node]]
 
         for next_node in node.output:
             graph[node].append(next_node)
@@ -70,4 +70,9 @@ if __name__ == "__main__":
     graph_ = feed_dict_2_graph(feed_input)
     order_ = topo_sorting(graph_)
     print(order_)
+
+    for node in order_:
+        node.forawrd()
+
+
 

@@ -11,7 +11,8 @@ class Node:
         self.value = None
 
         for input_node in self.input:
-            input_node.output.append(self)
+            if input_node:
+                input_node.output.append(self)
 
     def __repr__(self):
         return self.name
@@ -24,11 +25,11 @@ class Node:
 
 
 class Placeholder(Node):
-    def __init__(self, name=None, istrainable=True):
-        Node.__init__(self, name=name, istrainable=istrainable)
+    def __init__(self, x=None, name=None, istrainable=True):
+        Node.__init__(self, [x], name=name, istrainable=istrainable)
 
-    def forward(self, x):
-        self.value = x
+    def forward(self):
+        self.value = self.input[0]
 
     def backward(self):
         pass
@@ -64,7 +65,7 @@ class MSELoss(Node):
         self.y = self.input[1]
 
     def forward(self):
-        self.value = ((self.y_.value-self.y)**2)/2
+        self.value = ((self.y_.value-self.y.value)**2)/2
 
     def backward(self):
         pass
